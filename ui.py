@@ -40,6 +40,20 @@ else:
     # 4. Answer Buttons
     raw_options = [problem['correct'], problem['trap'], problem['wrong']]
 
+    st.markdown(
+        """
+        <style>
+        /* Target the radio button labels and add padding */
+        .stRadio label {
+            padding-bottom: 25px; 
+            padding-top: 10px;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+    # --------------------------
+
     if 'shuffled_options' not in st.session_state or st.session_state.get('last_q') != problem['question']:
         shuffled = raw_options.copy()
         random.shuffle(shuffled)
