@@ -1,6 +1,7 @@
 import pandas as pd
 import random
 import os
+import math
 
 DATA_FILE = 'Courses_Data.csv'
 
@@ -15,14 +16,21 @@ def format_fraction(num, den, whole=None):
 
 # --- THE MATH FUNCTIONS (The "Chefs") ---
 def add_fractions_simple(level):
-    if level == 1:
-        den = random.randint(3, 9)
-    else:
-        den = random.randint(10, 20) 
+    """Level 1: Identical denominators, sum < 1, NOT simplifiable."""
+    while True:
+        if level == 1:
+            den = random.randint(3, 9)
+        else:
+            den = random.randint(10, 20) 
+            
+        # Ensure num1 + num2 is strictly less than den
+        num1 = random.randint(1, den - 2)
+        num2 = random.randint(1, den - num1 - 1)
         
-    num1 = random.randint(1, den - 1)
-    num2 = random.randint(1, den - 1)
-    
+        # Science-based check: The Greatest Common Divisor must be 1 (meaning it cannot be simplified)
+        if math.gcd(num1 + num2, den) == 1:
+            break # The math is perfect, break out of the loop and serve the problem
+            
     return {
         "question": f"Oblicz: {format_fraction(num1, den)} + {format_fraction(num2, den)}",
         "correct": f"$\\displaystyle {format_fraction(num1+num2, den)}$",
