@@ -82,7 +82,8 @@ def add_mixed_numbers_simple(level):
     wrong_improper_sum = improper1_num + improper2_num + 1  # Arithmetic error: +1
     
     # LaTeX question
-    question = f"Oblicz: ${w1}\\frac{{{n1}}}{{{den}}} + {w2}\\frac{{{n2}}}{{{den}}}$"
+    # Use 'r' for a raw string so backslashes work correctly
+    question = rf"Oblicz: {w1} \frac{{{n1}}}{{{den}}} + {w2} \frac{{{n2}}}{{{den}}}"
     
     return {
         "question": question,
