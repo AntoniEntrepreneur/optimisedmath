@@ -39,27 +39,52 @@ def add_fractions_simple(level):
         "level_display": f"Poziom {level}" 
     }
 
-def add_fractions_complex(level):
-    pairs = [(2, 3), (2, 5), (3, 4), (3, 5), (4, 5)]
-    d1, d2 = random.choice(pairs)
+def add_fractions_single_conversion(level):
+    """Logic for Level 2: Single Conversion (One denominator is a multiple of the other)."""
+    # 1. Provide pairs where one is a direct multiple
+    pairs = [(2, 4), (2, 6), (2, 8), (3, 6), (3, 9), (4, 8), (5, 10)]
     
-    n1 = random.randint(1, d1 - 1)
-    n2 = random.randint(1, d2 - 1)
-    
-    common_den = d1 * d2
-    correct_num = (n1 * d2) + (n2 * d1)
-    
+    while True:
+        d1, d2 = random.choice(pairs)
+        
+        # Randomly swap them so the smaller denominator isn't always first
+        if random.choice([True, False]):
+            d1, d2 = d2, d1
+            
+        smaller_d = min(d1, d2)
+        larger_d = max(d1, d2)
+        scale = larger_d // smaller_d
+        
+        # Numerators must be smaller than their denominators
+        n_smaller = random.randint(1, smaller_d - 1)
+        n_larger = random.randint(1, larger_d - 1)
+        
+        correct_num = (n_smaller * scale) + n_larger
+        
+        # 2. Strict Constraint: Final sum must NOT be simplifiable
+        if math.gcd(correct_num, larger_d) == 1:
+            # We found a valid, unsimplifiable pair! Restore original order for n1, n2.
+            if d1 == smaller_d:
+                n1, n2 = n_smaller, n_larger
+            else:
+                n1, n2 = n_larger, n_smaller
+            break
+            
+    # 3. Generate Traps based on CSV rules
+    # Trap: Adding unscaled numerators, placing over larger denominator
     trap_num = n1 + n2
-    trap_den = d1 + d2
+    trap_den = larger_d
     
-    wrong_num = n1 + n2
+    # Wrong: Multiplying numerators instead of adding
+    wrong_num = n1 * n2
+    wrong_den = larger_d
     
     return {
         "question": f"Oblicz: {format_fraction(n1, d1)} + {format_fraction(n2, d2)}",
-        "correct": f"$\\displaystyle {format_fraction(correct_num, common_den)}$",
+        "correct": f"$\\displaystyle {format_fraction(correct_num, larger_d)}$",
         "trap": f"$\\displaystyle {format_fraction(trap_num, trap_den)}$",
-        "wrong": f"$\\displaystyle {format_fraction(wrong_num, common_den)}$",
-        "level_display": f"Poziom {level}: Różne mianowniki"
+        "wrong": f"$\\displaystyle {format_fraction(wrong_num, wrong_den)}$",
+        "level_display": f"Poziom {level}: Rozszerzanie jednego ułamka"
     }
 
 def add_mixed_numbers_simple(level):
@@ -128,7 +153,7 @@ def add_mixed_numbers_complex(level):
 
 MATH_MAP = {
     "add_fractions_simple": add_fractions_simple,
-    "add_fractions_complex": add_fractions_complex,
+    "add_fractions_single_conversion": add_fractions_single_conversion,
     "add_mixed_numbers_simple": add_mixed_numbers_simple,
     "add_mixed_numbers_complex": add_mixed_numbers_complex
 }
