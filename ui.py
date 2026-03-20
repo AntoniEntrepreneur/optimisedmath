@@ -4,76 +4,146 @@ import random
 
 st.set_page_config(page_title="Optimised Math", page_icon="🧮")
 
-# --- SIDEBAR: The Level Selector ---
+# --- 1. INITIALIZE GAME STATE (The Memory Card) ---
+if 'xp' not in st.session_state:
+    st.session_state.xp = 0
+if 'streak' not in st.session_state:
+    st.session_state.streak = 0
+if 'unlocked_level' not in st.session_state:
+    st.session_state.unlocked_level = 1
+if 'selected_level' not in st.session_state:
+    st.session_state.selected_level = 1
+if 'problem_answered' not in st.session_state:
+    st.session_state.problem_answered = False
+
+# --- SIDEBAR: Player Profile & Level Selector ---
 with st.sidebar:
-    st.title("Settings")
-    # This creates a slider from 1 to 5
-    selected_level = st.slider("Select Difficulty Level:", 1, 5, 1)
+    st.title("🏆 Twój Profil")
+    st.metric(label="Punkty Doświadczenia (XP)", value=st.session_state.xp)
     
-    if st.button("Apply Level & Reset"):
-        # When clicked, it forces the engine to get a new problem for the new level
-        st.session_state.current_problem = engine.get_problem_from_db("Addition and Substraction", selected_level)
+    st.title("Ustawienia")
+    
+    # Option A: The "Magical Appearance" Logic
+    if st.session_state.unlocked_level == 1:
+        # Hide the slider and show a motivational badge
+        st.info("🔒 Aktywny: Poziom 1\n\n*(Zdobądź 3 gwiazdki, aby odblokować wybór poziomów!)*")
+        new_level = 1 
+    else:
+        # Once Level 2 is unlocked, reveal the slider
+        new_level = st.slider(
+            "Wybierz Poziom:", 
+            min_value=1, 
+            max_value=st.session_state.unlocked_level, 
+            value=st.session_state.selected_level
+        )
+    
+    # If user manually changes the level, reset the streak and fetch a new problem
+    if new_level != st.session_state.selected_level:
+        st.session_state.selected_level = new_level
+        st.session_state.streak = 0 
+        st.session_state.problem_answered = False
+        st.session_state.current_problem = engine.get_problem_from_db("Addition", st.session_state.selected_level)
         st.rerun()
 
 st.title("🧮 CKE Math Tutor")
-st.subheader("Topic: Addition of Fractions")
+st.subheader("Temat: Dodawanie Ułamków")
 
-# 1. Initialize Memory
+# Fetch initial problem if missing
 if 'current_problem' not in st.session_state:
-    # We use the selected_level from the sidebar
-    st.session_state.current_problem = engine.get_problem_from_db("Addition and Substraction", selected_level)
+    st.session_state.current_problem = engine.get_problem_from_db("Addition", st.session_state.selected_level)
 
 problem = st.session_state.current_problem
 
-# 2. Safety Check
+# --- 2. THE MASTERY SCOREBOARD ---
+# Draw the stars based on the current streak
+stars_display = "⭐" * st.session_state.streak + "⬛" * (3 - st.session_state.streak)
+st.markdown(f"### Postęp do kolejnego poziomu: {stars_display}")
+
+# Safety Check
 if problem is None or "error" in problem:
-    st.error(f"❌ Could not find Level {selected_level} in Courses_Data.csv.")
+    st.error(f"❌ Nie można załadować Poziomu {st.session_state.selected_level}. Sprawdź plik CSV.")
 else:
-    # 3. Display the Problem
+    # Display Problem
     st.write("---")
-    # Show the level badge we created in engine.py
-    st.info(f"📍 {problem.get('level_display', 'Level ' + str(selected_level))}") 
+    st.info(f"📍 {problem.get('level_display', 'Level ' + str(st.session_state.selected_level))}") 
     
     st.header("Zadanie:")
     st.latex(problem['question'].replace("Oblicz: ", "")) 
 
-    # 4. Answer Buttons
-    raw_options = [problem['correct'], problem['trap'], problem['wrong']]
-
+    # Answer Buttons styling
     st.markdown(
         """
         <style>
-        /* Target the radio button labels and add padding */
-        .stRadio label {
-            padding-bottom: 25px; 
-            padding-top: 10px;
-        }
+        .stRadio label { padding-bottom: 25px; padding-top: 10px; }
         </style>
         """,
         unsafe_allow_html=True
     )
-    # --------------------------
 
-    # Use problem_id to guarantee a mathematically clean reset every time
+    raw_options = [problem['correct'], problem['trap'], problem['wrong']]
+
+    # Shuffle Logic using the unique Problem ID
     if 'shuffled_options' not in st.session_state or st.session_state.get('last_id') != problem['problem_id']:
         shuffled = raw_options.copy()
         random.shuffle(shuffled)
         st.session_state.shuffled_options = shuffled
         st.session_state.last_id = problem['problem_id']
+        st.session_state.problem_answered = False 
 
     options = st.session_state.shuffled_options
     choice = st.radio("Wybierz wynik:", options, index=None)
 
-    # 5. Check Logic - Dynamically pulls the exact message from the Engine
-    if st.button("Sprawdź odpowiedź"):
-        if choice == problem['correct']:
-            st.success("Brawo! To poprawna odpowiedź. 🎉")
-        elif choice == problem['trap']:
-            st.error(problem['trap_message'])
+    # --- 3. CHECK LOGIC & GAMIFICATION ---
+    if st.button("Sprawdź odpowiedź", disabled=st.session_state.problem_answered):
+        if not choice:
+            st.warning("Najpierw wybierz odpowiedź!")
         else:
-            st.warning(problem['wrong_message'])
+            st.session_state.problem_answered = True 
+            
+            if choice == problem['correct']:
+                st.session_state.feedback_type = "success"
+                st.session_state.feedback_msg = "Brawo! To poprawna odpowiedź. 🎉 (+15 XP)"
+                st.session_state.xp += 15
+                if st.session_state.streak < 3:
+                    st.session_state.streak += 1
+                
+                if st.session_state.streak == 3 and st.session_state.selected_level == st.session_state.unlocked_level:
+                    if st.session_state.unlocked_level < 5:
+                        st.session_state.unlocked_level += 1
+                        st.session_state.show_balloons = True
+            
+            elif choice == problem['trap']:
+                st.session_state.feedback_type = "error"
+                st.session_state.feedback_msg = problem['trap_message']
+                st.session_state.streak = max(0, st.session_state.streak - 1)
+            
+            else:
+                st.session_state.feedback_type = "warning"
+                st.session_state.feedback_msg = problem['wrong_message']
+                st.session_state.streak = max(0, st.session_state.streak - 1)
+            
+            st.rerun()
 
-    # 6. Next Problem
-    if st.button("Następne zadanie ➡️"):
-        st.session_state.current_problem = engine.get_problem_from_db("Addition and Substraction", selected_level)
-        st.rerun()
+    # --- 4. PERSISTENT FEEDBACK DISPLAY ---
+    if st.session_state.problem_answered:
+        if st.session_state.get('feedback_type') == "success":
+            st.success(st.session_state.feedback_msg)
+            if st.session_state.get('show_balloons'):
+                st.balloons()
+                st.success(f"🎊 Poziom {st.session_state.unlocked_level} odblokowany! 🎊")
+                st.session_state.show_balloons = False
+        elif st.session_state.get('feedback_type') == "error":
+            st.error(st.session_state.feedback_msg)
+        elif st.session_state.get('feedback_type') == "warning":
+            st.warning(st.session_state.feedback_msg)
+
+        if st.button("Następne zadanie ➡️"):
+            st.session_state.current_problem = engine.get_problem_from_db("Addition", st.session_state.selected_level)
+            st.session_state.problem_answered = False
+            st.rerun()
+
+    # 5. Next Problem Logic
+    if st.session_state.problem_answered:
+        if st.button("Następne zadanie ➡️"):
+            st.session_state.current_problem = engine.get_problem_from_db("Addition", st.session_state.selected_level)
+            st.rerun()
